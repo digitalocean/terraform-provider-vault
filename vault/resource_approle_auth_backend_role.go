@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform/helper/validation"
 	"github.com/hashicorp/vault/api"
 	"github.com/terraform-providers/terraform-provider-vault/util"
 )
@@ -90,6 +91,12 @@ func approleAuthBackendRoleResource() *schema.Resource {
 				Optional:    true,
 				Description: "Number of seconds after which issued tokens can no longer be renewed.",
 			},
+			"token_type": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "The type of token that should be generated via this role.",
+				ValidateFunc: validation.StringInSlice([]string{"service", "batch", "default"}, false),
+			},
 			"period": {
 				Type:        schema.TypeInt,
 				Optional:    true,
@@ -158,6 +165,9 @@ func approleAuthBackendRoleCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 	if v, ok := d.GetOk("token_max_ttl"); ok {
 		data["token_max_ttl"] = v.(int)
+	}
+	if v, ok := d.GetOk("token_type"); ok {
+		data["token_type"] = v.(string)
 	}
 
 	_, err := client.Logical().Write(path, data)
@@ -256,6 +266,10 @@ func approleAuthBackendRoleRead(d *schema.ResourceData, meta interface{}) error 
 		return fmt.Errorf("expected period %q to be a number, isn't", resp.Data["period"])
 	}
 
+	if tokenType, ok := resp.Data["token_type"]; ok {
+		d.Set("token_type", tokenType.(string))
+	}
+
 	d.Set("backend", backend)
 	d.Set("role_name", role)
 	d.Set("period", period)
@@ -315,6 +329,10 @@ func approleAuthBackendRoleUpdate(d *schema.ResourceData, meta interface{}) erro
 		"token_ttl":          d.Get("token_ttl").(int),
 		"token_max_ttl":      d.Get("token_max_ttl").(int),
 		"period":             d.Get("period").(int),
+	}
+
+	if v, ok := d.GetOk("token_type"); ok {
+		data["token_type"] = v.(string)
 	}
 
 	_, err := client.Logical().Write(path, data)

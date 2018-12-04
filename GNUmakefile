@@ -61,3 +61,6 @@ endif
 
 .PHONY: build test testacc vet fmt fmtcheck errcheck vendor-status test-compile website website-test
 
+linux:
+	GOOS=linux GOARCH=amd64 go build -o terraform-provider-vault main.go
+	shasum -a 256 terraform-provider-vault  | awk '{ print $$1 }' > terraform-provider-vault.sha256.txt
